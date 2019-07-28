@@ -105,5 +105,5 @@ venv.bak/
 .DS_Store
 .idea
 *.bak
-data
+data/*
 !/data/README.md
