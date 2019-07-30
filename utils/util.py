@@ -26,15 +26,15 @@ def normalizeString(s):
 
 
 # Read query/response pairs and return a voc object
-def readVocs(datafile, corpus_name):
+def readVocs(trainfile, datafile, corpus_name):
     print("Reading lines...")
     # Read the file and split into lines
-    lines = open(datafile, encoding='utf-8').\
-        read().strip().split('\n')
+    lines = open(trainfile, encoding='utf-8').read().strip().split('\n')
+    sentences = [[normalizeString(s) for s in line.split('\t')] for line in open(datafile, encoding='utf-8').readlines()]
     # Split every line into pairs and normalize
     pairs = [[normalizeString(s) for s in l.split('\t')] for l in lines]
     voc = Voc(corpus_name)
-    return voc, pairs
+    return voc, pairs, sentences
 
 
 # Returns True iff both sentences in a pair 'p' are under the MAX_LENGTH threshold
@@ -49,16 +49,19 @@ def filterPairs(pairs, MAX_LENGTH):
 
 
 # Using the functions defined above, return a populated voc object and pairs list
-def loadPrepareData(corpus, corpus_name, datafile, save_dir, MAX_LENGTH):
+def loadPrepareData(corpus, corpus_name, trainfile, datafile, save_dir, MAX_LENGTH):
     print("Start preparing training data ...")
-    voc, pairs = readVocs(datafile, corpus_name)
+    voc, pairs, sentences = readVocs(trainfile, datafile, corpus_name)
     print("Read {!s} sentence pairs".format(len(pairs)))
     pairs = filterPairs(pairs, MAX_LENGTH)
     print("Trimmed to {!s} sentence pairs".format(len(pairs)))
     print("Counting words...")
-    for pair in pairs:
-        voc.addSentence(pair[0])
-        voc.addSentence(pair[1])
+    for sentence in sentences:
+        voc.addSentence(sentence[0])
+        voc.addSentence(sentence[0])
+    # for pair in pairs:
+    #     voc.addSentence(pair[0])
+    #     voc.addSentence(pair[1])
     print("Counted words:", voc.num_words)
     return voc, pairs
 

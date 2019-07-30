@@ -9,9 +9,10 @@ corpus_name = "cornell-movie-dialogs-corpus"
 corpus = os.path.join("data", corpus_name)
 # Define path to new file
 datafile = os.path.join(corpus, "formatted_movie_lines.txt")
+trainfile = os.path.join(corpus, "train.txt")
 # Load/Assemble voc and pairs
 save_dir = os.path.join("data", "save")
-voc, pairs = loadPrepareData(corpus, corpus_name, datafile, save_dir, MAX_LENGTH)
+voc, pairs = loadPrepareData(corpus, corpus_name, trainfile, save_dir, MAX_LENGTH)
 # Trim voc and pairs
 pairs = trimRareWords(voc, pairs)
 

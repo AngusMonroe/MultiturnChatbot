@@ -4,6 +4,7 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
+import numpy as np
 import torch
 from torch.jit import script, trace
 import torch.nn as nn
@@ -21,11 +22,15 @@ import math
 from utils.util import *
 from model import *
 from eval import *
+from torchtext.vocab import GloVe, Vectors
+from torchtext import data, datasets, vocab
+TEXT = data.Field(sequential=True)
 
 corpus_name = "cornell-movie-dialogs-corpus"
 corpus = os.path.join("data", corpus_name)
 # Define path to new file
 datafile = os.path.join(corpus, "formatted_movie_lines.txt")
+trainfile = os.path.join(corpus, "train.txt")
 
 USE_CUDA = torch.cuda.is_available()
 device = torch.device("cuda" if USE_CUDA else "cpu")
@@ -33,8 +38,13 @@ device = torch.device("cuda" if USE_CUDA else "cpu")
 MAX_LENGTH = 10
 
 # Load/Assemble voc and pairs
-save_dir = os.path.join("data", "save")
-voc, pairs = loadPrepareData(corpus, corpus_name, datafile, save_dir, MAX_LENGTH)
+cache = '.vector_cache'
+if not os.path.exists(cache):
+    os.mkdir(cache)
+
+# TEXT.build_vocab(pos, vectors=GloVe(name='6B', dim=300))
+save_dir = os.path.join("model", corpus_name)
+voc, pairs = loadPrepareData(corpus, corpus_name, trainfile, datafile, save_dir, MAX_LENGTH)
 # Print some pairs to validate
 # print("\npairs:")
 # for pair in pairs[:10]:
@@ -167,7 +177,7 @@ def train(input_variable, lengths, target_variable, mask, max_target_len, encode
     return sum(print_losses) / n_totals
 
 
-def trainIters(model_name, voc, pairs, encoder, decoder, encoder_optimizer, decoder_optimizer, embedding, encoder_n_layers, decoder_n_layers, save_dir, n_iteration, batch_size, print_every, save_every, clip, corpus_name, loadFilename):
+def trainIters(voc, pairs, encoder, decoder, encoder_optimizer, decoder_optimizer, embedding, encoder_n_layers, decoder_n_layers, save_dir, n_iteration, batch_size, print_every, save_every, clip, loadFilename):
 
     # Load batches for each iteration
     training_batches = [batch2TrainData(voc, [random.choice(pairs) for _ in range(batch_size)])
@@ -200,9 +210,10 @@ def trainIters(model_name, voc, pairs, encoder, decoder, encoder_optimizer, deco
 
         # Save checkpoint
         if (iteration % save_every == 0):
-            directory = os.path.join(save_dir, model_name, corpus_name, '{}-{}_{}'.format(encoder_n_layers, decoder_n_layers, hidden_size))
+            directory = os.path.join(save_dir, '{}-{}_{}'.format(encoder_n_layers, decoder_n_layers, hidden_size))
             if not os.path.exists(directory):
                 os.makedirs(directory)
+            save_path = os.path.join(directory, '{}_{}.tar'.format(iteration, 'checkpoint'))
             torch.save({
                 'iteration': iteration,
                 'en': encoder.state_dict(),
@@ -212,15 +223,16 @@ def trainIters(model_name, voc, pairs, encoder, decoder, encoder_optimizer, deco
                 'loss': loss,
                 'voc_dict': voc.__dict__,
                 'embedding': embedding.state_dict()
-            }, os.path.join(directory, '{}_{}.tar'.format(iteration, 'checkpoint')))
+            }, save_path)
+    return save_path
 
 
 # Configure models
-model_name = 'cb_model'
+# model_name = 'cb_model'
 attn_model = 'dot'
 #attn_model = 'general'
 #attn_model = 'concat'
-hidden_size = 500
+hidden_size = 300
 encoder_n_layers = 2
 decoder_n_layers = 2
 dropout = 0.1
@@ -251,6 +263,11 @@ if loadFilename:
 print('Building encoder and decoder ...')
 # Initialize word embeddings
 embedding = nn.Embedding(voc.num_words, hidden_size)
+weight_matrix = vocab.GloVe('6B', 300)
+voc.getEmb(weight_matrix)
+# print(torch.FloatTensor(np.array(voc.index2emb)).size())
+embedding.weight.data.copy_(torch.FloatTensor(np.array(voc.index2emb)))
+embedding.weight.requires_grad = False
 if loadFilename:
     embedding.load_state_dict(embedding_sd)
 # Initialize encoder & decoder models
@@ -279,24 +296,25 @@ decoder.train()
 
 # Initialize optimizers
 print('Building optimizers ...')
-encoder_optimizer = optim.Adam(encoder.parameters(), lr=learning_rate)
-decoder_optimizer = optim.Adam(decoder.parameters(), lr=learning_rate * decoder_learning_ratio)
+encoder_optimizer = optim.Adam(filter(lambda p: p.requires_grad, encoder.parameters()), lr=learning_rate)
+decoder_optimizer = optim.Adam(filter(lambda p: p.requires_grad, decoder.parameters()), lr=learning_rate * decoder_learning_ratio)
 if loadFilename:
     encoder_optimizer.load_state_dict(encoder_optimizer_sd)
     decoder_optimizer.load_state_dict(decoder_optimizer_sd)
 
 # Run training iterations
 print("Starting Training!")
-trainIters(model_name, voc, pairs, encoder, decoder, encoder_optimizer, decoder_optimizer,
+save_path = trainIters(voc, pairs, encoder, decoder, encoder_optimizer, decoder_optimizer,
            embedding, encoder_n_layers, decoder_n_layers, save_dir, n_iteration, batch_size,
-           print_every, save_every, clip, corpus_name, loadFilename)
+           print_every, save_every, clip, loadFilename)
 
-# # Set dropout layers to eval mode
-# encoder.eval()
-# decoder.eval()
-#
-# # Initialize search module
-# searcher = GreedySearchDecoder(encoder, decoder)
-#
-# # Begin chatting (uncomment and run the following line to begin)
-# evaluateInput(encoder, decoder, searcher, voc, max_length=MAX_LENGTH)
+# Set dropout layers to eval mode
+encoder.eval()
+decoder.eval()
+
+# Initialize search module
+searcher = GreedySearchDecoder(encoder, decoder)
+
+test_path = os.path.join(corpus, "test.txt")
+res_path = re.sub('\.tar', '\.txt', save_path)
+evaluateFile(encoder, decoder, searcher, voc, test_path, res_path, max_length=MAX_LENGTH)
