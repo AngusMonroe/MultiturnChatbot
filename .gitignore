@@ -107,3 +107,4 @@ venv.bak/
 *.bak
 data/*
 !/data/README.md
+model

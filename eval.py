@@ -43,3 +43,24 @@ def evaluateInput(encoder, decoder, searcher, voc, max_length):
         except KeyError:
             print("Error: Encountered unknown word.")
 
+
+def evaluateFile(encoder, decoder, searcher, voc, input_path, output_path, max_length):
+    input_file = open(input_path, 'r', encoding='utf8')
+    output_file = open(output_path, 'w', encoding='utf8')
+    for line in input_file.readlines():
+        try:
+            # Get input sentence
+            sentence = line.split('\t')
+            # Normalize sentence
+            input_sentence = normalizeString(sentence[0])
+            # Evaluate sentence
+            output_words = evaluate(encoder, decoder, searcher, voc, input_sentence, max_length)
+            # Format and print response sentence
+            output_words[:] = [x for x in output_words if not (x == 'EOS' or x == 'PAD')]
+            output_line = ' '.join(output_words) + '\t' + sentence[1]
+            output_file.write(output_line)
+
+        except KeyError:
+            print("Error: Encountered unknown word.")
+    input_file.close()
+    output_file.close()

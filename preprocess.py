@@ -87,10 +87,20 @@ conversations = loadConversations(os.path.join(corpus, "movie_conversations.txt"
 
 # Write new csv file
 print("\nWriting newly formatted file...")
+train_file = open(os.path.join(corpus, "train.txt"), 'w', encoding='utf-8')
+test_file = open(os.path.join(corpus, "test.txt"), 'w', encoding='utf-8')
 with open(datafile, 'w', encoding='utf-8') as outputfile:
     writer = csv.writer(outputfile, delimiter=delimiter, lineterminator='\n')
-    for pair in extractSentencePairs(conversations):
+    pairs = extractSentencePairs(conversations)
+    pairs_num = len(pairs)
+    for i, pair in enumerate(pairs):
         writer.writerow(pair)
+        if i / pairs_num < 0.8:
+            train_file.write(pair[0] + '\t' + pair[1] + '\n')
+        else:
+            test_file.write(pair[0] + '\t' + pair[1] + '\n')
+train_file.close()
+test_file.close()
 
 # Print a sample of lines
 # print("\nSample lines from file:")
