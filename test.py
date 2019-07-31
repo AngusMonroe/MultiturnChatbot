@@ -26,6 +26,23 @@ def fetch_data(cand, ref):
     return candidate, references
 
 
+def fetch_data_from_one(path):
+    """ Store each reference and candidate sentences as a list """
+    candidate_file = codecs.open(path, 'r', 'utf-8')
+    candidate = []
+    references = []
+    for line in candidate_file.readlines():
+        try:
+            item = line.split('\t')
+            if len(item) is not 2:
+                raise KeyError
+            candidate.append(item[0])
+            references.append(item[1][:-1])
+        except Exception:
+            print(line)
+    return candidate, [references]
+
+
 def count_ngram(candidate, references, n):
     clipped_count = 0
     count = 0
@@ -37,7 +54,12 @@ def count_ngram(candidate, references, n):
         ref_lengths = []
         # Build dictionary of ngram counts
         for reference in references:
-            ref_sentence = reference[si]
+            try:
+                ref_sentence = reference[si]
+            except Exception:
+                print(si)
+                print(reference)
+                break
             ngram_d = {}
             words = ref_sentence.strip().split()
             ref_lengths.append(len(words))
@@ -126,12 +148,17 @@ def BLEU(candidate, references):
 
 
 if __name__ == "__main__":
-    # candidate, references = fetch_data(sys.argv[1], sys.argv[2])
-    candidate, references = fetch_data('bleu_data/tst.txt', 'bleu_data/ref.txt')
+    if len(sys.argv) == 2:
+        candidate, references = fetch_data_from_one(sys.argv[1])
+    else:
+        candidate, references = fetch_data(sys.argv[1], sys.argv[2])
+    print(len(candidate))
+    print(len(references))
+    # candidate, references = fetch_data('bleu_data/tst.txt', 'bleu_data/ref.txt')
     bleu1 = BLEU_n(candidate, references, 1)
     bleu2 = BLEU_n(candidate, references, 2)
     print(bleu1)
     print(bleu2)
-    out = open('bleu_data/bleu_out.txt', 'w', encoding='utf8')
+    out = open('data/bleu_out.txt', 'w', encoding='utf8')
     out.write(str(bleu1) + ' ' + str(bleu2))
     out.close()

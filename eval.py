@@ -1,4 +1,5 @@
 
+from tqdm import tqdm
 from utils.util import *
 from model import *
 
@@ -45,9 +46,10 @@ def evaluateInput(encoder, decoder, searcher, voc, max_length):
 
 
 def evaluateFile(encoder, decoder, searcher, voc, input_path, output_path, max_length):
+    print('Start testing...')
     input_file = open(input_path, 'r', encoding='utf8')
     output_file = open(output_path, 'w', encoding='utf8')
-    for line in input_file.readlines():
+    for line in tqdm(input_file.readlines()):
         try:
             # Get input sentence
             sentence = line.split('\t')

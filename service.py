@@ -74,3 +74,7 @@ searcher = GreedySearchDecoder(encoder, decoder)
 if __name__ == '__main__':
     # Begin chatting (uncomment and run the following line to begin)
     evaluateInput(encoder, decoder, searcher, voc, max_length=MAX_LENGTH)
+    # test_path = os.path.join(corpus, "test.txt")
+    # res_path = re.sub(r'\.tar', r'\.txt', save_path)
+    # evaluateFile(encoder, decoder, searcher, voc, test_path, res_path, max_length=MAX_LENGTH)
+

@@ -4,6 +4,7 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
+import optparse
 import numpy as np
 import torch
 from torch.jit import script, trace
@@ -24,9 +25,91 @@ from model import *
 from eval import *
 from torchtext.vocab import GloVe, Vectors
 from torchtext import data, datasets, vocab
-TEXT = data.Field(sequential=True)
 
-corpus_name = "cornell-movie-dialogs-corpus"
+optparser = optparse.OptionParser()
+optparser.add_option(
+    "-C", "--corpus_name", default="cornell-movie-dialogs-corpus",
+    help="Corpus name"
+)
+optparser.add_option(
+    "-A", "--attn_model", choices=['dot', 'general', 'concat'], default="general",
+    help="Attention model"
+)
+optparser.add_option(
+    "-H", "--hidden_size", default=300,
+    help="Dimensionality of the glove word vector"
+)
+optparser.add_option(
+    "--encoder_n_layers", default=2,
+    help="Layer number of encoder"
+)
+optparser.add_option(
+    "--decoder_n_layers", default=2,
+    help="Layer number of decoder"
+)
+optparser.add_option(
+    "-D", "--dropout", default=0.1,
+    help="Dropout"
+)
+optparser.add_option(
+    "-B", "--batch_size", default=256,
+    help="Batch size"
+)
+optparser.add_option(
+    "-C", "--clip", default=50.0,
+    help="Clip gradients: gradients are modified in place"
+)
+optparser.add_option(
+    "--teacher_forcing_ratio", default=1.0,
+    help="Teacher forcing ratio"
+)
+optparser.add_option(
+    "--decoder_learning_ratio", default=5.0,
+    help="Decoder learning ratio"
+)
+optparser.add_option(
+    "-L", "--learning_rate", default=0.0001,
+    help="Learning rate"
+)
+optparser.add_option(
+    "-N", "--n_iteration", default=4000,
+    help="Epoch number"
+)
+optparser.add_option(
+    "-P", "--print_every", default=10,
+    help="Print frequency"
+)
+optparser.add_option(
+    "-S", "--save_every", default=1000,
+    help="Save frequency"
+)
+optparser.add_option(
+    "-G", "--glove_path", default='model/glove/glove.6B.300d.txt',
+    help="Path of Glove word vector file"
+)
+
+
+opts = optparser.parse_args()[0]
+
+corpus_name = opts.corpus_name
+# Configure models
+# model_name = 'cb_model'
+attn_model = opts.attn_model
+hidden_size = opts.hidden_size
+encoder_n_layers = opts.encoder_n_layers
+decoder_n_layers = opts.decoder_n_layers
+dropout = opts.dropout
+batch_size = opts.batch_size
+# Configure training/optimization
+clip = opts.clip
+teacher_forcing_ratio = opts.teacher_forcing_ratio
+decoder_learning_ratio = opts.decoder_learning_ratio
+learning_rate = opts.learning_rate
+n_iteration = opts.n_iteration
+print_every = opts.print_every
+save_every = opts.save_every
+glove_path = opts.glove_path
+
 corpus = os.path.join("data", corpus_name)
 # Define path to new file
 datafile = os.path.join(corpus, "formatted_movie_lines.txt")
@@ -63,45 +146,6 @@ pairs = trimRareWords(voc, pairs)
 # print("target_variable:", target_variable)
 # print("mask:", mask)
 # print("max_target_len:", max_target_len)
-
-
-class GreedySearchDecoder(nn.Module):
-    def __init__(self, encoder, decoder):
-        super(GreedySearchDecoder, self).__init__()
-        self.encoder = encoder
-        self.decoder = decoder
-
-    def forward(self, input_seq, input_length, max_length):
-        # Forward input through encoder model
-        encoder_outputs, encoder_hidden = self.encoder(input_seq, input_length)
-        # Prepare encoder's final hidden layer to be first hidden input to the decoder
-        decoder_hidden = encoder_hidden[:self.decoder.n_layers]
-        # Initialize decoder input with SOS_token
-        decoder_input = torch.ones(1, 1, device=device, dtype=torch.long) * SOS_token
-        # Initialize tensors to append decoded words to
-        all_tokens = torch.zeros([0], device=device, dtype=torch.long)
-        all_scores = torch.zeros([0], device=device)
-        # Iteratively decode one word token at a time
-        for _ in range(max_length):
-            # Forward pass through decoder
-            decoder_output, decoder_hidden = self.decoder(decoder_input, decoder_hidden, encoder_outputs)
-            # Obtain most likely word token and its softmax score
-            decoder_scores, decoder_input = torch.max(decoder_output, dim=1)
-            # Record token and score
-            all_tokens = torch.cat((all_tokens, decoder_input), dim=0)
-            all_scores = torch.cat((all_scores, decoder_scores), dim=0)
-            # Prepare current token to be next decoder input (add a dimension)
-            decoder_input = torch.unsqueeze(decoder_input, 0)
-        # Return collections of word tokens and scores
-        return all_tokens, all_scores
-
-
-def maskNLLLoss(inp, target, mask):
-    nTotal = mask.sum()
-    crossEntropy = -torch.log(torch.gather(inp, 1, target.view(-1, 1)).squeeze(1))
-    loss = crossEntropy.masked_select(mask).mean()
-    loss = loss.to(device)
-    return loss, nTotal.item()
 
 
 def train(input_variable, lengths, target_variable, mask, max_target_len, encoder, decoder, embedding,
@@ -144,7 +188,7 @@ def train(input_variable, lengths, target_variable, mask, max_target_len, encode
             # Teacher forcing: next input is current target
             decoder_input = target_variable[t].view(1, -1)
             # Calculate and accumulate loss
-            mask_loss, nTotal = maskNLLLoss(decoder_output, target_variable[t], mask[t])
+            mask_loss, nTotal = maskNLLLoss(decoder_output, target_variable[t], mask[t], device)
             loss += mask_loss
             print_losses.append(mask_loss.item() * nTotal)
             n_totals += nTotal
@@ -158,7 +202,7 @@ def train(input_variable, lengths, target_variable, mask, max_target_len, encode
             decoder_input = torch.LongTensor([[topi[i][0] for i in range(batch_size)]])
             decoder_input = decoder_input.to(device)
             # Calculate and accumulate loss
-            mask_loss, nTotal = maskNLLLoss(decoder_output, target_variable[t], mask[t])
+            mask_loss, nTotal = maskNLLLoss(decoder_output, target_variable[t], mask[t], device)
             loss += mask_loss
             print_losses.append(mask_loss.item() * nTotal)
             n_totals += nTotal
@@ -227,17 +271,6 @@ def trainIters(voc, pairs, encoder, decoder, encoder_optimizer, decoder_optimize
     return save_path
 
 
-# Configure models
-# model_name = 'cb_model'
-attn_model = 'dot'
-#attn_model = 'general'
-#attn_model = 'concat'
-hidden_size = 300
-encoder_n_layers = 2
-decoder_n_layers = 2
-dropout = 0.1
-batch_size = 64
-
 # Set checkpoint to load from; set to None if starting from scratch
 loadFilename = None
 checkpoint_iter = 4000
@@ -263,7 +296,8 @@ if loadFilename:
 print('Building encoder and decoder ...')
 # Initialize word embeddings
 embedding = nn.Embedding(voc.num_words, hidden_size)
-weight_matrix = vocab.GloVe('6B', 300)
+weight_matrix = Vectors(glove_path)
+# weight_matrix = vocab.GloVe('6B', 300)
 voc.getEmb(weight_matrix)
 # print(torch.FloatTensor(np.array(voc.index2emb)).size())
 embedding.weight.data.copy_(torch.FloatTensor(np.array(voc.index2emb)))
@@ -280,15 +314,6 @@ if loadFilename:
 encoder = encoder.to(device)
 decoder = decoder.to(device)
 print('Models built and ready to go!')
-
-# Configure training/optimization
-clip = 50.0
-teacher_forcing_ratio = 1.0
-learning_rate = 0.0001
-decoder_learning_ratio = 5.0
-n_iteration = 4000
-print_every = 1
-save_every = 500
 
 # Ensure dropout layers are in train mode
 encoder.train()
@@ -316,5 +341,5 @@ decoder.eval()
 searcher = GreedySearchDecoder(encoder, decoder)
 
 test_path = os.path.join(corpus, "test.txt")
-res_path = re.sub('\.tar', '\.txt', save_path)
+res_path = re.sub(r'\.tar', '.txt', save_path)
 evaluateFile(encoder, decoder, searcher, voc, test_path, res_path, max_length=MAX_LENGTH)
