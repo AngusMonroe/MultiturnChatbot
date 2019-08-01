@@ -1,4 +1,6 @@
 # -*- coding:utf-8 -*-
+import random
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -120,10 +122,10 @@ class LuongAttnDecoderRNN(nn.Module):
 
 
 class GreedySearchDecoder(nn.Module):
-    def __init__(self, encoder, decoder):
+    def __init__(self, seq2seq):
         super(GreedySearchDecoder, self).__init__()
-        self.encoder = encoder
-        self.decoder = decoder
+        self.encoder = seq2seq.encoder
+        self.decoder = seq2seq.decoder
 
     def forward(self, input_seq, input_length, max_length):
         # Forward input through encoder model
@@ -148,3 +150,60 @@ class GreedySearchDecoder(nn.Module):
             decoder_input = torch.unsqueeze(decoder_input, 0)
         # Return collections of word tokens and scores
         return all_tokens, all_scores
+
+
+class Seq2Seq(nn.Module):
+    def __init__(self, encoder, decoder, opts):
+        super(Seq2Seq, self).__init__()
+        self.encoder = encoder
+        self.decoder = decoder
+        self.opts = opts
+
+    def forward(self, input_variable, lengths, batch_size, teacher_forcing_ratio, max_target_len, target_variable, mask):
+        # Initialize variables
+        loss = 0
+        print_losses = []
+        n_totals = 0
+
+        # Forward pass through encoder
+        encoder_outputs, encoder_hidden = self.encoder(input_variable, lengths)
+
+        # Create initial decoder input (start with SOS tokens for each sentence)
+        decoder_input = torch.LongTensor([[SOS_token for _ in range(batch_size)]])
+        decoder_input = decoder_input.to(device)
+
+        # Set initial decoder hidden state to the encoder's final hidden state
+        decoder_hidden = encoder_hidden[:self.decoder.n_layers]
+
+        # Determine if we are using teacher forcing this iteration
+        use_teacher_forcing = True if random.random() < teacher_forcing_ratio else False
+
+        # Forward batch of sequences through decoder one time step at a time
+        if use_teacher_forcing:
+            for t in range(max_target_len):
+                decoder_output, decoder_hidden = self.decoder(
+                    decoder_input, decoder_hidden, encoder_outputs
+                )
+                # Teacher forcing: next input is current target
+                decoder_input = target_variable[t].view(1, -1)
+                # Calculate and accumulate loss
+                mask_loss, nTotal = maskNLLLoss(decoder_output, target_variable[t], mask[t], device)
+                loss += mask_loss
+                print_losses.append(mask_loss.item() * nTotal)
+                n_totals += nTotal
+        else:
+            for t in range(max_target_len):
+                decoder_output, decoder_hidden = self.decoder(
+                    decoder_input, decoder_hidden, encoder_outputs
+                )
+                # No teacher forcing: next input is decoder's own current output
+                _, topi = decoder_output.topk(1)
+                decoder_input = torch.LongTensor([[topi[i][0] for i in range(batch_size)]])
+                decoder_input = decoder_input.to(device)
+                # Calculate and accumulate loss
+                mask_loss, nTotal = maskNLLLoss(decoder_output, target_variable[t], mask[t], device)
+                loss += mask_loss
+                print_losses.append(mask_loss.item() * nTotal)
+                n_totals += nTotal
+
+        return loss, print_losses, n_totals

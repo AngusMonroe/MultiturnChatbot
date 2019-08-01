@@ -1,80 +1,66 @@
 # -*- coding:utf-8 -*-
 import os
+import optparse
+import torch
 from utils.util import *
 from model import *
 from eval import *
+from train import MAX_LENGTH
 
-MAX_LENGTH = 10
-corpus_name = "cornell-movie-dialogs-corpus"
-corpus = os.path.join("data", corpus_name)
-# Define path to new file
-datafile = os.path.join(corpus, "formatted_movie_lines.txt")
-trainfile = os.path.join(corpus, "train.txt")
-# Load/Assemble voc and pairs
-save_dir = os.path.join("data", "save")
-voc, pairs = loadPrepareData(corpus, corpus_name, trainfile, save_dir, MAX_LENGTH)
-# Trim voc and pairs
-pairs = trimRareWords(voc, pairs)
+optparser = optparse.OptionParser()
+optparser.add_option(
+    "--model", default='',
+    help="Path of model file"
+)
 
-USE_CUDA = torch.cuda.is_available()
-device = torch.device("cuda" if USE_CUDA else "cpu")
+opts = optparser.parse_args()[0]
 
-# Configure models
-model_name = 'cb_model'
-attn_model = 'dot'
-#attn_model = 'general'
-#attn_model = 'concat'
-hidden_size = 500
-encoder_n_layers = 2
-decoder_n_layers = 2
-dropout = 0.1
-batch_size = 64
+# Configure model
+model = opts.model
 
-checkpoint_iter = 4000
-loadFilename = os.path.join(save_dir, model_name, corpus_name,
-                           '{}-{}_{}'.format(encoder_n_layers, decoder_n_layers, hidden_size),
-                           '{}_checkpoint.tar'.format(checkpoint_iter))
 
-# Load model if a loadFilename is provided
-if loadFilename:
-    # If loading on same machine the model was trained on
-    checkpoint = torch.load(loadFilename, map_location=device)
-    # If loading a model trained on GPU to CPU
-    #checkpoint = torch.load(loadFilename, map_location=torch.device('cpu'))
-    encoder_sd = checkpoint['en']
-    decoder_sd = checkpoint['de']
-    encoder_optimizer_sd = checkpoint['en_opt']
-    decoder_optimizer_sd = checkpoint['de_opt']
-    embedding_sd = checkpoint['embedding']
-    voc.__dict__ = checkpoint['voc_dict']
+def init_model(model_path):
+    if not model_path:
+        raise RuntimeError('ModelNotFoundError')
+    seq2seq = torch.load(model_path)
+    # Use appropriate device
+    seq2seq.to(device)
+    print('Models built and ready to go!')
 
-print('Building encoder and decoder ...')
-# Initialize word embeddings
-embedding = nn.Embedding(voc.num_words, hidden_size)
-if loadFilename:
-    embedding.load_state_dict(embedding_sd)
-# Initialize encoder & decoder models
-encoder = EncoderRNN(hidden_size, embedding, encoder_n_layers, dropout)
-decoder = LuongAttnDecoderRNN(attn_model, embedding, hidden_size, voc.num_words, decoder_n_layers, dropout)
-if loadFilename:
-    encoder.load_state_dict(encoder_sd)
-    decoder.load_state_dict(decoder_sd)
-# Use appropriate device
-encoder = encoder.to(device)
-decoder = decoder.to(device)
-print('Models built and ready to go!')
+    # Set dropout layers to eval mode
+    seq2seq.eval()
 
-# Set dropout layers to eval mode
-encoder.eval()
-decoder.eval()
+    # Initialize search module
+    searcher = GreedySearchDecoder(seq2seq)
+    return seq2seq, searcher
 
-# Initialize search module
-searcher = GreedySearchDecoder(encoder, decoder)
+
+def init_voc(corpus, corpus_name, datafile, trainfile, save_dir):
+    voc, pairs = loadPrepareData(corpus, corpus_name, trainfile, datafile, save_dir, MAX_LENGTH)
+    return voc
+
+
+def get_para_from_seq2seq(seq2seq):
+    corpus_name = seq2seq.opts.corpus_name
+    data_file = seq2seq.opts.data_file
+    train_file = seq2seq.opts.train_file
+
+    corpus = os.path.join("data", corpus_name)
+    # Define path to new file
+    datafile = os.path.join(corpus, data_file)
+    trainfile = os.path.join(corpus, train_file)
+    save_dir = os.path.join("model", corpus_name)
+
+    return corpus, corpus_name, datafile, trainfile, save_dir
+
 
 if __name__ == '__main__':
-    # Begin chatting (uncomment and run the following line to begin)
-    evaluateInput(encoder, decoder, searcher, voc, max_length=MAX_LENGTH)
-    # test_path = os.path.join(corpus, "test.txt")
-    # res_path = re.sub(r'\.tar', r'\.txt', save_path)
-    # evaluateFile(encoder, decoder, searcher, voc, test_path, res_path, max_length=MAX_LENGTH)
+    seq2seq, searcher = init_model(model)
+    corpus, corpus_name, datafile, trainfile, save_dir = get_para_from_seq2seq(seq2seq)
+    voc = init_voc(corpus, corpus_name, datafile, trainfile, save_dir)
 
+    # Begin chatting (uncomment and run the following line to begin)
+    evaluateInput(searcher, voc, max_length=MAX_LENGTH)
+    # test_path = os.path.join(corpus, "test.txt")
+    # res_path = re.sub(r'\.ml', r'\.txt', save_path)
+    # evaluateFile(searcher, voc, test_path, res_path, max_length=MAX_LENGTH)

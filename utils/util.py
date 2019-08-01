@@ -3,6 +3,8 @@ import itertools
 import re
 import unicodedata
 import torch
+import os
+import json
 from utils.vocab import *
 
 
@@ -64,7 +66,7 @@ def loadPrepareData(corpus, corpus_name, trainfile, datafile, save_dir, MAX_LENG
     return voc, pairs
 
 
-def trimRareWords(voc, pairs, MIN_COUNT=3):
+def trimRareWords(voc, pairs, MIN_COUNT=0):
     # Trim words used under the MIN_COUNT from the voc
     voc.trim(MIN_COUNT)
     # Filter out pairs with trimmed words
@@ -152,3 +154,10 @@ def maskNLLLoss(inp, target, mask, device):
     loss = loss.to(device)
     return loss, nTotal.item()
 
+
+def writeParaLog(opts, time):
+    log_path = 'log/para/'
+    if not os.path.exists(log_path):
+        os.mkdir(log_path)
+    with open(log_path + time + '.json', "w") as f:
+        json.dump(opts, f)
