@@ -7,6 +7,7 @@ import numpy as np
 PAD_token = 0  # Used for padding short sentences
 SOS_token = 1  # Start-of-sentence token
 EOS_token = 2  # End-of-sentence token
+UNK_token = 3  # Unknown keyword token
 
 
 class Voc:
@@ -16,8 +17,8 @@ class Voc:
         self.word2index = {}
         self.index2emb = []
         self.word2count = {}
-        self.index2word = {PAD_token: "PAD", SOS_token: "SOS", EOS_token: "EOS"}
-        self.num_words = 3  # Count SOS, EOS, PAD, UNK
+        self.index2word = {PAD_token: "PAD", SOS_token: "SOS", EOS_token: "EOS", UNK_token: "UNK"}
+        self.num_words = 4  # Count SOS, EOS, PAD, UNK
 
     def addSentence(self, sentence):
         for word in sentence.split(' '):
@@ -51,8 +52,8 @@ class Voc:
         # Reinitialize dictionaries
         self.word2index = {}
         self.word2count = {}
-        self.index2word = {PAD_token: "PAD", SOS_token: "SOS", EOS_token: "EOS"}
-        self.num_words = 3  # Count default tokens
+        self.index2word = {PAD_token: "PAD", SOS_token: "SOS", EOS_token: "EOS", UNK_token: "UNK"}
+        self.num_words = 4  # Count default tokens
 
         for word in keep_words:
             self.addWord(word)

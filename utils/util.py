@@ -98,7 +98,7 @@ def trimRareWords(voc, pairs, MIN_COUNT=0):
 
 
 def indexesFromSentence(voc, sentence):
-    return [voc.word2index[word] for word in sentence.split(' ')] + [EOS_token]
+    return [voc.word2index[word] if word in voc.word2index else UNK_token for word in sentence.split(' ')] + [EOS_token]
 
 
 def zeroPadding(l, fillvalue=PAD_token):

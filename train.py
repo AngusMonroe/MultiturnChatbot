@@ -152,7 +152,7 @@ voc, pairs = loadPrepareData(corpus, corpus_name, trainfile, datafile, save_dir,
 #     print(pair)
 
 # Trim voc and pairs
-pairs = trimRareWords(voc, pairs)
+# pairs = trimRareWords(voc, pairs)
 
 # Example for validation
 # small_batch_size = 5
@@ -300,3 +300,4 @@ searcher = GreedySearchDecoder(seq2seq)
 test_path = os.path.join(corpus, test_file)
 res_path = re.sub(r'\.ml', '.txt', save_path)
 evaluateFile(searcher, voc, test_path, res_path, max_length=MAX_LENGTH)
+print('Done! The model name is: ' + time_str)
