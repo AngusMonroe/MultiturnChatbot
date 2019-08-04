@@ -160,6 +160,6 @@ if __name__ == "__main__":
     bleu2 = BLEU_n(candidate, references, 2)
     print(bleu1)
     print(bleu2)
-    out = open('data/bleu_out.txt', 'w', encoding='utf8')
-    out.write(str(bleu1) + ' ' + str(bleu2))
+    out = open('data/bleu_out.txt', 'a', encoding='utf8')
+    out.write(sys.argv[1] + ' ' + str(bleu1) + ' ' + str(bleu2) + '\n')
     out.close()

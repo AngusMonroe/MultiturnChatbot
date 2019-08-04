@@ -61,7 +61,7 @@ if __name__ == '__main__':
     voc = init_voc(corpus, corpus_name, datafile, trainfile, save_dir)
 
     # Begin chatting (uncomment and run the following line to begin)
-    # evaluateInput(searcher, voc, max_length=MAX_LENGTH)
-    test_path = os.path.join(corpus, "test.txt")
-    res_path = re.sub(r'\.ml', r'\.txt', model)
-    evaluateFile(searcher, voc, test_path, res_path, max_length=MAX_LENGTH)
+    evaluateInput(searcher, voc, max_length=MAX_LENGTH)
+    # test_path = os.path.join(corpus, "test.txt")
+    # res_path = re.sub(r'\.ml', r'\.txt', model)
+    # evaluateFile(searcher, voc, test_path, res_path, max_length=MAX_LENGTH)

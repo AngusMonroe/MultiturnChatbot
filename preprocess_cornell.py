@@ -66,7 +66,7 @@ def extractSentencePairs(conversations):
 # printLines(os.path.join(corpus, "movie_lines.txt"))
 
 # Define path to new file
-datafile = os.path.join(corpus, "formatted_movie_lines.txt")
+datafile = os.path.join(corpus, "formatted_dialog.txt")
 
 delimiter = '\t'
 # Unescape the delimiter
@@ -87,8 +87,8 @@ conversations = loadConversations(os.path.join(corpus, "movie_conversations.txt"
 
 # Write new csv file
 print("\nWriting newly formatted file...")
-train_file = open(os.path.join(corpus, "train.txt"), 'w', encoding='utf-8')
-test_file = open(os.path.join(corpus, "test.txt"), 'w', encoding='utf-8')
+train_file = open(os.path.join(corpus, "train.dat"), 'w', encoding='utf-8')
+test_file = open(os.path.join(corpus, "test.dat"), 'w', encoding='utf-8')
 with open(datafile, 'w', encoding='utf-8') as outputfile:
     writer = csv.writer(outputfile, delimiter=delimiter, lineterminator='\n')
     pairs = extractSentencePairs(conversations)

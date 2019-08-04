@@ -108,3 +108,4 @@ venv.bak/
 data/*
 !/data/README.md
 model
+!/model/glove/README.md

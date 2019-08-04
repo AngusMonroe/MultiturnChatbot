@@ -29,23 +29,24 @@ from torchtext import data, datasets, vocab
 
 optparser = optparse.OptionParser()
 optparser.add_option(
-    "-C", "--corpus_name", default="cornell-movie-dialogs-corpus",
-    help="Corpus name"
+    "-C", "--corpus_name", default="duconv",
+    choices=['cornell-movie-dialogs-corpus', 'duconv'],
+    help="Corpus name (cornell-movie-dialogs-corpus or duconv)"
 )
 optparser.add_option(
-    "-F", "--data_file", default="formatted_movie_lines.txt",
+    "-F", "--data_file", default="formatted_dialog.txt",
     help="Data file name"
 )
 optparser.add_option(
-    "-T", "--train_file", default="train.txt",
+    "-T", "--train_file", default="train.dat",
     help="Train file name"
 )
 optparser.add_option(
-    "-E", "--test_file", default="test.txt",
+    "-E", "--test_file", default="dev.dat",
     help="Test file name"
 )
 optparser.add_option(
-    "-G", "--glove_path", default='model/glove/glove.6B.300d.txt',
+    "-G", "--glove_path", default='model/glove/sgns.wiki.bigram',
     help="Path of Glove word vector file"
 )
 optparser.add_option(
@@ -146,7 +147,7 @@ if not os.path.exists(cache):
 save_dir = os.path.join("model", corpus_name)
 voc, pairs = loadPrepareData(corpus, corpus_name, trainfile, datafile, save_dir, MAX_LENGTH)
 # Print some pairs to validate
-# print("\npairs:")
+# print("pairs:\n")
 # for pair in pairs[:10]:
 #     print(pair)
 

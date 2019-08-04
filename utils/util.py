@@ -29,10 +29,12 @@ def normalizeString(s):
 def readVocs(trainfile, datafile, corpus_name):
     print("Reading lines...")
     # Read the file and split into lines
-    lines = open(trainfile, encoding='utf-8').read().strip().split('\n')
-    sentences = [[normalizeString(s) for s in line.split('\t')] for line in open(datafile, encoding='utf-8').readlines()]
+    lines = open(trainfile, encoding='utf-8').readlines()
+    sentences = [[s for s in line[:-1].split('\t')] for line in open(datafile, encoding='utf-8').readlines()]
+    # sentences = [[normalizeString(s) for s in line.split('\t')] for line in open(datafile, encoding='utf-8').readlines()]
     # Split every line into pairs and normalize
-    pairs = [[normalizeString(s) for s in l.split('\t')] for l in lines]
+    pairs = [[s for s in l[:-1].split('\t')] for l in lines]
+    # pairs = [[normalizeString(s) for s in l.split('\t')] for l in lines]
     voc = Voc(corpus_name)
     return voc, pairs, sentences
 
