@@ -59,8 +59,8 @@ def evaluateFile(searcher, voc, input_path, output_path, max_length):
             output_words = evaluate(searcher, voc, input_sentence, max_length)
             # Format and print response sentence
             output_words[:] = [x for x in output_words if not (x == 'EOS' or x == 'PAD')]
-            output_line = ' '.join(output_words) + '\t' + sentence[1]
-            output_file.write(output_line)
+            output_sentence = ' '.join(output_words)
+            output_file.write(output_sentence + '\t' + sentence[1] + '\n')
 
         except KeyError:
             print("Error: Encountered unknown word.")

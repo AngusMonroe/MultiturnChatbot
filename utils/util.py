@@ -160,4 +160,4 @@ def writeParaLog(opts, time):
     if not os.path.exists(log_path):
         os.mkdir(log_path)
     with open(log_path + time + '.json', "w") as f:
-        json.dump(opts, f)
+        json.dump(opts.__str__(), f)

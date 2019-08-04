@@ -169,8 +169,6 @@ def train(input_variable, lengths, target_variable, mask, max_target_len, seq2se
           embedding, seq2seq_optimizer, batch_size, clip, max_length=MAX_LENGTH):
 
     # Zero gradients
-    # encoder_optimizer.zero_grad()
-    # decoder_optimizer.zero_grad()
     seq2seq_optimizer.zero_grad()
 
     # Set device options
@@ -185,13 +183,9 @@ def train(input_variable, lengths, target_variable, mask, max_target_len, seq2se
     loss.backward()
 
     # Clip gradients: gradients are modified in place
-    # _ = nn.utils.clip_grad_norm_(encoder.parameters(), clip)
-    # _ = nn.utils.clip_grad_norm_(decoder.parameters(), clip)
     _ = nn.utils.clip_grad_norm_(seq2seq.parameters(), clip)
 
     # Adjust model weights
-    # encoder_optimizer.step()
-    # decoder_optimizer.step()
     seq2seq_optimizer.step()
 
     return sum(print_losses) / n_totals
@@ -228,22 +222,11 @@ def trainIters(voc, pairs, seq2seq, seq2seq_optimizer, embedding, save_dir, n_it
             print_loss = 0
 
         # Save checkpoint
-        if (iteration % save_every == 0):
-            directory = os.path.join(save_dir, '{}-{}_{}'.format(encoder_n_layers, decoder_n_layers, hidden_size))
+        if iteration % save_every == 0:
+            directory = os.path.join(save_dir, time_str)
             if not os.path.exists(directory):
                 os.makedirs(directory)
-            # save_path = os.path.join(directory, '{}_{}.tar'.format(iteration, 'checkpoint'))
             save_path = os.path.join(directory, '{}_{}.ml'.format(iteration, 'checkpoint'))
-            # torch.save({
-            #     'iteration': iteration,
-            #     'en': encoder.state_dict(),
-            #     'de': decoder.state_dict(),
-            #     'en_opt': encoder_optimizer.state_dict(),
-            #     'de_opt': decoder_optimizer.state_dict(),
-            #     'loss': loss,
-            #     'voc_dict': voc.__dict__,
-            #     'embedding': embedding.state_dict()
-            # }, save_path)
             torch.save(seq2seq, save_path)
 
     return save_path
@@ -275,7 +258,6 @@ print('Building encoder and decoder ...')
 # Initialize word embeddings
 embedding = nn.Embedding(voc.num_words, hidden_size)
 weight_matrix = Vectors(glove_path)
-# weight_matrix = vocab.GloVe('6B', 300)
 voc.getEmb(weight_matrix)
 print(torch.FloatTensor(np.array(voc.index2emb)).size())
 embedding.weight.data.copy_(torch.FloatTensor(np.array(voc.index2emb)))
@@ -290,36 +272,25 @@ if loadFilename:
     decoder.load_state_dict(decoder_sd)
 seq2seq = Seq2Seq(encoder, decoder, opts)
 # Use appropriate device
-# encoder = encoder.to(device)
-# decoder = decoder.to(device)
 seq2seq.to(device)
 print('Models built and ready to go!')
 
 # Ensure dropout layers are in train mode
-# encoder.train()
-# decoder.train()
 seq2seq.train()
 
 # Initialize optimizers
 print('Building optimizers ...')
-# encoder_optimizer = optim.Adam(filter(lambda p: p.requires_grad, encoder.parameters()), lr=learning_rate)
-# decoder_optimizer = optim.Adam(filter(lambda p: p.requires_grad, decoder.parameters()), lr=learning_rate * decoder_learning_ratio)
-# if loadFilename:
-#     encoder_optimizer.load_state_dict(encoder_optimizer_sd)
-#     decoder_optimizer.load_state_dict(decoder_optimizer_sd)
 seq2seq_optimizer = optim.Adam(seq2seq.parameters(), lr=learning_rate)
 
 # Run training iterations
 print("Starting Training!")
 time_str = time.strftime("%Y%m%d-%H%M%S", time.localtime())
-# writeParaLog(opts, time_str)
+writeParaLog(opts, time_str)
 save_path = trainIters(voc, pairs, seq2seq, seq2seq_optimizer,
            embedding, save_dir, n_iteration, batch_size,
            print_every, save_every, clip, loadFilename, time_str)
 
 # Set dropout layers to eval mode
-# encoder.eval()
-# decoder.eval()
 seq2seq.eval()
 
 # Initialize search module

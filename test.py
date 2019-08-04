@@ -31,11 +31,12 @@ def fetch_data_from_one(path):
     candidate_file = codecs.open(path, 'r', 'utf-8')
     candidate = []
     references = []
-    for line in candidate_file.readlines():
+    for i, line in enumerate(candidate_file.readlines()):
         try:
             item = line.split('\t')
             if len(item) is not 2:
-                raise KeyError
+                continue
+                # raise KeyError
             candidate.append(item[0])
             references.append(item[1][:-1])
         except Exception:
@@ -54,12 +55,12 @@ def count_ngram(candidate, references, n):
         ref_lengths = []
         # Build dictionary of ngram counts
         for reference in references:
-            try:
-                ref_sentence = reference[si]
-            except Exception:
-                print(si)
-                print(reference)
-                break
+            # try:
+            ref_sentence = reference[si]
+            # except Exception:
+            #     print(si)
+            #     print(reference)
+            #     break
             ngram_d = {}
             words = ref_sentence.strip().split()
             ref_lengths.append(len(words))
@@ -153,7 +154,7 @@ if __name__ == "__main__":
     else:
         candidate, references = fetch_data(sys.argv[1], sys.argv[2])
     print(len(candidate))
-    print(len(references))
+    print(len(references[0]))
     # candidate, references = fetch_data('bleu_data/tst.txt', 'bleu_data/ref.txt')
     bleu1 = BLEU_n(candidate, references, 1)
     bleu2 = BLEU_n(candidate, references, 2)
