@@ -107,5 +107,8 @@ venv.bak/
 *.bak
 data/*
 !/data/README.md
-model
+model/glove/*
 !/model/glove/README.md
+model/cornell-movie-dialogs-corpus
+model/duconv
+
