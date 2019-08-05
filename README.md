@@ -126,7 +126,7 @@ Options:
 The evaluation metrics are given in the form of BLEU1 and BLEU2.
 
 ```
-python test.py [model_path]
+python test.py [test_file]
 ```
 
 ```
@@ -134,6 +134,29 @@ python test.py [model_path]
 16108
 0.12676846929645086
 0.005143676257318174
+```
+
+### Start a service for case study
+
+```
+python service.py [model_path]
+```
+
+```
+Models built and ready to go!
+Start preparing training data ...
+Reading lines...
+Read 159942 sentence pairs
+Trimmed to 33851 sentence pairs
+Counting words...
+Counted words: 48831
+>
+```
+
+```
+> 你 喜欢 看 电影 么 ？
+Bot: 喜欢 啊 ， 有 推荐 吗 ？
+>
 ```
 
 ## Reference

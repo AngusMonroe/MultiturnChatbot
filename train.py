@@ -147,9 +147,9 @@ if not os.path.exists(cache):
 save_dir = os.path.join("model", corpus_name)
 voc, pairs = loadPrepareData(corpus, corpus_name, trainfile, datafile, save_dir, MAX_LENGTH)
 # Print some pairs to validate
-# print("pairs:\n")
-# for pair in pairs[:10]:
-#     print(pair)
+print("pairs:\n")
+for pair in pairs[:10]:
+    print(pair)
 
 # Trim voc and pairs
 # pairs = trimRareWords(voc, pairs)

@@ -34,7 +34,7 @@ def evaluateInput(searcher, voc, max_length):
             # Check if it is quit case
             if input_sentence == 'q' or input_sentence == 'quit': break
             # Normalize sentence
-            input_sentence = normalizeString(input_sentence)
+            # input_sentence = normalizeString(input_sentence)
             # Evaluate sentence
             output_words = evaluate(searcher, voc, input_sentence, max_length)
             # Format and print response sentence
@@ -54,9 +54,10 @@ def evaluateFile(searcher, voc, input_path, output_path, max_length):
             # Get input sentence
             sentence = line.split('\t')
             # Normalize sentence
-            input_sentence = normalizeString(sentence[0])
+            # input_sentence = normalizeString(sentence[0])
             # Evaluate sentence
-            output_words = evaluate(searcher, voc, input_sentence, max_length)
+            output_words = evaluate(searcher, voc, sentence[0], max_length)
+            # output_words = evaluate(searcher, voc, input_sentence, max_length)
             # Format and print response sentence
             output_words[:] = [x for x in output_words if not (x == 'EOS' or x == 'PAD')]
             output_sentence = ' '.join(output_words)
