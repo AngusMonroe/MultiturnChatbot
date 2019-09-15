@@ -4,6 +4,7 @@ import csv
 import os
 import re
 import json
+from tqdm import tqdm
 
 corpus_name = "duconv"
 corpus = os.path.join("data", corpus_name)
@@ -15,24 +16,32 @@ origin_file_list = ['train.txt', 'dev.txt']
 
 
 def loadConversations(fileName, dics):
+    sent2idx = json.load(open('data/duconv/sent2idx.txt'))
     f = open(fileName, 'r', encoding='utf-8')
     pairs = []
-    for line in f.readlines():
+    for line in tqdm(f.readlines()):
         dic = json.loads(line)
         dics.append(dic)
-        pairs = extractSentencePairs(pairs, dic)
+        pairs = extractSentencePairs(pairs, dic, sent2idx)
     f.close()
     return dics, pairs
 
 
-def extractSentencePairs(pairs, dic):
-    if dic['conversation']:
+def extractSentencePairs(pairs, dic, sent2idx):
+    if dic['conversation'] and dic['knowledge']:
+        node = []
+        for item in dic['knowledge']:
+            if item[0] in sent2idx.keys() and sent2idx[item[0]] not in node:
+                node.append(sent2idx[item[0]])
+            if item[2] in sent2idx.keys() and sent2idx[item[2]] not in node:
+                node.append(sent2idx[item[2]])
         for i in range(len(dic['conversation'])):
             if not i:
                 continue
             pair = []
             pair.append(dic['conversation'][i - 1])
             pair.append(dic['conversation'][i])
+            pair.append(" ".join(list(map(str, node))))
             pairs.append(pair)
     return pairs
 

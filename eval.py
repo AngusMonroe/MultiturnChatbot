@@ -7,8 +7,13 @@ USE_CUDA = torch.cuda.is_available()
 device = torch.device("cuda" if USE_CUDA else "cpu")
 
 
-def evaluate(searcher, voc, sentence, max_length):
+def evaluate(searcher, voc, sentence, max_length, graph_str, gnn_model):
     ### Format input sentence as a batch
+    # graph_str -> node embedding
+    nodes = [int(i) for i in graph_str.split(' ')]
+    embs = gnn_model[0](nodes)
+    emb = embs.sum(0)
+    emb = emb.to(device)
     # words -> indexes
     indexes_batch = [indexesFromSentence(voc, sentence)]
     # Create lengths tensor
@@ -19,7 +24,7 @@ def evaluate(searcher, voc, sentence, max_length):
     input_batch = input_batch.to(device)
     lengths = lengths.to(device)
     # Decode sentence with searcher
-    tokens, scores = searcher(input_batch, lengths, max_length)
+    tokens, scores = searcher(input_batch, lengths, max_length, emb)
     # indexes -> words
     decoded_words = [voc.index2word[token.item()] for token in tokens]
     return decoded_words
@@ -45,7 +50,7 @@ def evaluateInput(searcher, voc, max_length):
             print("Error: Encountered unknown word.")
 
 
-def evaluateFile(searcher, voc, input_path, output_path, max_length):
+def evaluateFile(searcher, voc, input_path, output_path, gnn_model, max_length):
     print('Start testing...')
     input_file = open(input_path, 'r', encoding='utf8')
     output_file = open(output_path, 'w', encoding='utf8')
@@ -53,10 +58,11 @@ def evaluateFile(searcher, voc, input_path, output_path, max_length):
         try:
             # Get input sentence
             sentence = line.split('\t')
+            assert len(sentence) == 3
             # Normalize sentence
             # input_sentence = normalizeString(sentence[0])
             # Evaluate sentence
-            output_words = evaluate(searcher, voc, sentence[0], max_length)
+            output_words = evaluate(searcher, voc, sentence[0], max_length, sentence[2], gnn_model)
             # output_words = evaluate(searcher, voc, input_sentence, max_length)
             # Format and print response sentence
             output_words[:] = [x for x in output_words if not (x == 'EOS' or x == 'PAD')]

@@ -21,6 +21,8 @@ from io import open
 import itertools
 import math
 import time
+from tqdm import tqdm
+import json
 from utils.util import *
 from model import *
 from eval import *
@@ -151,6 +153,9 @@ print("pairs:\n")
 for pair in pairs[:10]:
     print(pair)
 
+# sent2idx = json.load(open('data/duconv/sent2idx.txt', 'r', encoding='utf8'))
+gnn_model = torch.load('data/duconv/model_best_debug_ep2_0.8146.torch', map_location='cpu')
+
 # Trim voc and pairs
 # pairs = trimRareWords(voc, pairs)
 
@@ -167,7 +172,7 @@ for pair in pairs[:10]:
 
 
 def train(input_variable, lengths, target_variable, mask, max_target_len, seq2seq,
-          embedding, seq2seq_optimizer, batch_size, clip, max_length=MAX_LENGTH):
+          embedding, seq2seq_optimizer, batch_size, clip, in_graph, out_graph, max_length=MAX_LENGTH):
 
     # Zero gradients
     seq2seq_optimizer.zero_grad()
@@ -178,7 +183,7 @@ def train(input_variable, lengths, target_variable, mask, max_target_len, seq2se
     target_variable = target_variable.to(device)
     mask = mask.to(device)
 
-    loss, print_losses, n_totals = seq2seq(input_variable, lengths, batch_size, teacher_forcing_ratio, max_target_len, target_variable, mask)
+    loss, print_losses, n_totals = seq2seq(input_variable, lengths, batch_size, teacher_forcing_ratio, max_target_len, target_variable, mask, in_graph, out_graph)
 
     # Perform backpropatation
     loss.backward()
@@ -195,8 +200,14 @@ def train(input_variable, lengths, target_variable, mask, max_target_len, seq2se
 def trainIters(voc, pairs, seq2seq, seq2seq_optimizer, embedding, save_dir, n_iteration, batch_size, print_every, save_every, clip, loadFilename, time_str):
 
     # Load batches for each iteration
-    training_batches = [batch2TrainData(voc, [random.choice(pairs) for _ in range(batch_size)])
-                      for _ in range(n_iteration)]
+    if os.path.exists('data/duconv/training_batches.pl'):
+        training_batches = torch.load('data/duconv/training_batches.pl')
+        print('Loaded training batches from data/duconv/training_batches.pl')
+    else:
+        training_batches = [batch2TrainData(voc, [random.choice(pairs) for _ in range(batch_size)], gnn_model)
+                            for _ in tqdm(range(n_iteration))]
+        torch.save(training_batches, 'data/duconv/training_batches.pl')
+        print('Saved training batches to data/duconv/training_batches.pl')
 
     # Initializations
     print('Initializing ...')
@@ -210,10 +221,19 @@ def trainIters(voc, pairs, seq2seq, seq2seq_optimizer, embedding, save_dir, n_it
     for iteration in range(start_iteration, n_iteration + 1):
         training_batch = training_batches[iteration - 1]
         # Extract fields from batch
-        input_variable, lengths, target_variable, mask, max_target_len = training_batch
-
+        input_variable, lengths, target_variable, mask, max_target_len, in_graph, out_graph = training_batch
+        # print(input_variable.size())
+        # print(target_variable.size())
+        # in_emb = torch.LongTensor(np.array(in_emb))
+        # out_emb = torch.LongTensor(np.array(out_emb))
+        # print(in_emb.size())
+        # print(out_emb.size())
+        # in_emb = in_emb.transpose(0, 1)
+        # out_emb = out_emb.transpose(0, 1)
+        # input_variable = torch.cat((input_variable, in_emb), 0)
+        # target_variable = torch.cat((target_variable, out_emb), 0)
         # Run a training iteration with batch
-        loss = train(input_variable, lengths, target_variable, mask, max_target_len, seq2seq, embedding, seq2seq_optimizer, batch_size, clip)
+        loss = train(input_variable, lengths, target_variable, mask, max_target_len, seq2seq, embedding, seq2seq_optimizer, batch_size, clip, in_graph, out_graph)
         print_loss += loss
 
         # Print progress
@@ -246,7 +266,7 @@ if loadFilename:
     # If loading on same machine the model was trained on
     checkpoint = torch.load(loadFilename)
     # If loading a model trained on GPU to CPU
-    #checkpoint = torch.load(loadFilename, map_location=torch.device('cpu'))
+    # checkpoint = torch.load(loadFilename, map_location=torch.device('cpu'))
     encoder_sd = checkpoint['en']
     decoder_sd = checkpoint['de']
     encoder_optimizer_sd = checkpoint['en_opt']
@@ -266,7 +286,7 @@ embedding.weight.requires_grad = False
 if loadFilename:
     embedding.load_state_dict(embedding_sd)
 # Initialize encoder & decoder models
-encoder = EncoderRNN(hidden_size, embedding, encoder_n_layers, dropout)
+encoder = EncoderRNN(hidden_size + 128, embedding, encoder_n_layers, dropout)
 decoder = LuongAttnDecoderRNN(attn_model, embedding, hidden_size, voc.num_words, decoder_n_layers, dropout)
 if loadFilename:
     encoder.load_state_dict(encoder_sd)
@@ -299,5 +319,5 @@ searcher = GreedySearchDecoder(seq2seq)
 
 test_path = os.path.join(corpus, test_file)
 res_path = re.sub(r'\.ml', '.txt', save_path)
-evaluateFile(searcher, voc, test_path, res_path, max_length=MAX_LENGTH)
+evaluateFile(searcher, voc, test_path, res_path, gnn_model, max_length=MAX_LENGTH)
 print('Done! The model name is: ' + time_str)

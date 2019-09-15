@@ -16,24 +16,42 @@ class EncoderRNN(nn.Module):
         self.n_layers = n_layers
         self.hidden_size = hidden_size
         self.embedding = embedding
+        self.compress = nn.Linear(428, 300)
 
         # Initialize GRU; the input_size and hidden_size params are both set to 'hidden_size'
         #   because our input size is a word embedding with number of features == hidden_size
         self.gru = nn.GRU(hidden_size, hidden_size, n_layers,
                           dropout=(0 if n_layers == 1 else dropout), bidirectional=True)
 
-    def forward(self, input_seq, input_lengths, hidden=None):
+    def forward(self, input_seq, input_lengths, in_graph, hidden=None):
         # Convert word indexes to embeddings
+        input_seq = input_seq.long()
+        # print(input_seq.size())
         embedded = self.embedding(input_seq)
+        in_graph = torch.unsqueeze(in_graph, 0)
+        in_graph = in_graph.repeat(input_seq.size(0), 1, 1)
+        in_graph = in_graph.to(device)
+        # print(embedded.size())
+        # print(in_graph.size())
+        emb = torch.cat((embedded, in_graph), 2)
+        # print(emb.size())
+        emb = emb.to(device)
+        # raise KeyError
+
+        # combine word emb with graph emb
+
+
         # Pack padded batch of sequences for RNN module
-        packed = nn.utils.rnn.pack_padded_sequence(embedded, input_lengths)
+        packed = nn.utils.rnn.pack_padded_sequence(emb, input_lengths)
         # Forward pass through GRU
         outputs, hidden = self.gru(packed, hidden)
         # Unpack padding
         outputs, _ = nn.utils.rnn.pad_packed_sequence(outputs)
         # Sum bidirectional GRU outputs
-        outputs = outputs[:, :, :self.hidden_size] + outputs[:, : ,self.hidden_size:]
+        outputs = outputs[:, :, :self.hidden_size] + outputs[:, :, self.hidden_size:]
         # Return output and final hidden state
+        outputs = self.compress(outputs)
+        hidden = self.compress(hidden)
         return outputs, hidden
 
 
@@ -127,9 +145,9 @@ class GreedySearchDecoder(nn.Module):
         self.encoder = seq2seq.encoder
         self.decoder = seq2seq.decoder
 
-    def forward(self, input_seq, input_length, max_length):
+    def forward(self, input_seq, input_length, max_length, in_graph):
         # Forward input through encoder model
-        encoder_outputs, encoder_hidden = self.encoder(input_seq, input_length)
+        encoder_outputs, encoder_hidden = self.encoder(input_seq, input_length, in_graph)
         # Prepare encoder's final hidden layer to be first hidden input to the decoder
         decoder_hidden = encoder_hidden[:self.decoder.n_layers]
         # Initialize decoder input with SOS_token
@@ -159,14 +177,14 @@ class Seq2Seq(nn.Module):
         self.decoder = decoder
         self.opts = opts
 
-    def forward(self, input_variable, lengths, batch_size, teacher_forcing_ratio, max_target_len, target_variable, mask):
+    def forward(self, input_variable, lengths, batch_size, teacher_forcing_ratio, max_target_len, target_variable, mask, in_graph, out_graph):
         # Initialize variables
         loss = 0
         print_losses = []
         n_totals = 0
 
         # Forward pass through encoder
-        encoder_outputs, encoder_hidden = self.encoder(input_variable, lengths)
+        encoder_outputs, encoder_hidden = self.encoder(input_variable, lengths, in_graph)
 
         # Create initial decoder input (start with SOS tokens for each sentence)
         decoder_input = torch.LongTensor([[SOS_token for _ in range(batch_size)]])

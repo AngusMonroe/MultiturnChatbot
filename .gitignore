@@ -111,4 +111,5 @@ model/glove/*
 !/model/glove/README.md
 model/cornell-movie-dialogs-corpus
 model/duconv
-
+.vector_cache/sgns.wiki.bigram.pt
+log/para
