@@ -29,19 +29,25 @@ def loadConversations(fileName, dics):
 
 def extractSentencePairs(pairs, dic, sent2idx):
     if dic['conversation'] and dic['knowledge']:
-        node = []
-        for item in dic['knowledge']:
-            if item[0] in sent2idx.keys() and sent2idx[item[0]] not in node:
-                node.append(sent2idx[item[0]])
-            if item[2] in sent2idx.keys() and sent2idx[item[2]] not in node:
-                node.append(sent2idx[item[2]])
+        # node = []
+        goal = []
+        for item in dic['goal']:
+            if item[0] in sent2idx.keys() and sent2idx[item[0]] not in goal:
+                goal.append(sent2idx[item[0]])
+            if item[2] in sent2idx.keys() and sent2idx[item[2]] not in goal:
+                goal.append(sent2idx[item[2]])
+        # for item in dic['knowledge']:
+        #     if item[0] in sent2idx.keys() and sent2idx[item[0]] not in node:
+        #         node.append(sent2idx[item[0]])
+        #     if item[2] in sent2idx.keys() and sent2idx[item[2]] not in node:
+        #         node.append(sent2idx[item[2]])
         for i in range(len(dic['conversation'])):
             if not i:
                 continue
             pair = []
             pair.append(dic['conversation'][i - 1])
             pair.append(dic['conversation'][i])
-            pair.append(" ".join(list(map(str, node))))
+            pair.append(" ".join(list(map(str, goal))))
             pairs.append(pair)
     return pairs
 
@@ -59,7 +65,7 @@ with open(datafile, 'w', encoding='utf-8') as formatted_file:
     for file in origin_file_list:
         print("Processing " + file + "...")
         dicts, pairs = loadConversations(os.path.join(corpus, file), dicts)
-        file_name = re.sub(r'\.txt', '.dat', os.path.join(corpus, file))
+        file_name = re.sub(r'\.txt', '_goal.dat', os.path.join(corpus, file))
         with open(file_name, 'w', encoding='utf-8') as outputfile:
             writer = csv.writer(outputfile, delimiter=delimiter, lineterminator='\n')
             for pair in pairs:

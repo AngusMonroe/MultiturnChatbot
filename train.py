@@ -40,11 +40,11 @@ optparser.add_option(
     help="Data file name"
 )
 optparser.add_option(
-    "-T", "--train_file", default="train.dat",
+    "-T", "--train_file", default="train_goal.dat",
     help="Train file name"
 )
 optparser.add_option(
-    "-E", "--test_file", default="dev.dat",
+    "-E", "--test_file", default="dev_goal.dat",
     help="Test file name"
 )
 optparser.add_option(
@@ -154,7 +154,7 @@ for pair in pairs[:10]:
     print(pair)
 
 # sent2idx = json.load(open('data/duconv/sent2idx.txt', 'r', encoding='utf8'))
-gnn_model = torch.load('data/duconv/model_best_debug_ep2_0.8146.torch', map_location='cpu')
+gnn_model = torch.load('data/duconv/model_best_debug_ep17_0.8165.torch', map_location='cpu')
 
 # Trim voc and pairs
 # pairs = trimRareWords(voc, pairs)

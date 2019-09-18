@@ -10,9 +10,12 @@ device = torch.device("cuda" if USE_CUDA else "cpu")
 def evaluate(searcher, voc, sentence, max_length, graph_str, gnn_model):
     ### Format input sentence as a batch
     # graph_str -> node embedding
-    nodes = [int(i) for i in graph_str.split(' ')]
-    embs = gnn_model[0](nodes)
-    emb = embs.sum(0)
+    if graph_str:
+        nodes = [int(i) for i in graph_str.split(' ')]
+        embs = gnn_model[0](nodes)
+        emb = embs.sum(0)
+    else:
+        emb = torch.zeros(128)
     emb = emb.to(device)
     # words -> indexes
     indexes_batch = [indexesFromSentence(voc, sentence)]
@@ -59,6 +62,8 @@ def evaluateFile(searcher, voc, input_path, output_path, gnn_model, max_length):
             # Get input sentence
             sentence = line.split('\t')
             assert len(sentence) == 3
+            if sentence[2][-1] == '\n':
+                sentence[2] = sentence[2][:-1]
             # Normalize sentence
             # input_sentence = normalizeString(sentence[0])
             # Evaluate sentence

@@ -156,10 +156,15 @@ if __name__ == "__main__":
     print(len(candidate))
     print(len(references[0]))
     # candidate, references = fetch_data('bleu_data/tst.txt', 'bleu_data/ref.txt')
-    bleu1 = BLEU_n(candidate, references, 1)
-    bleu2 = BLEU_n(candidate, references, 2)
-    print(bleu1)
-    print(bleu2)
-    out = open('data/bleu_out.txt', 'a', encoding='utf8')
-    out.write(sys.argv[1] + ' ' + str(bleu1) + ' ' + str(bleu2) + '\n')
-    out.close()
+    # bleu1 = BLEU_n(candidate, references, 1)
+    # bleu2 = BLEU_n(candidate, references, 2)
+    # print(bleu1)
+    # print(bleu2)
+    # out = open('data/bleu_out.txt', 'a', encoding='utf8')
+    # out.write(sys.argv[1] + ' ' + str(bleu1) + ' ' + str(bleu2) + '\n')
+    # out.close()
+    from nlgeval import NLGEval
+
+    nlgeval = NLGEval()  # loads the models
+    metrics_dict = nlgeval.compute_metrics(references, candidate)
+    print(metrics_dict)
