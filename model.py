@@ -50,8 +50,8 @@ class EncoderRNN(nn.Module):
         # Sum bidirectional GRU outputs
         outputs = outputs[:, :, :self.hidden_size] + outputs[:, :, self.hidden_size:]
         # Return output and final hidden state
-        outputs = self.compress(outputs)
-        hidden = self.compress(hidden)
+        # outputs = self.compress(outputs)
+        # hidden = self.compress(hidden)
         return outputs, hidden
 
 
@@ -112,28 +112,46 @@ class LuongAttnDecoderRNN(nn.Module):
         self.embedding_dropout = nn.Dropout(dropout)
         self.gru = nn.GRU(hidden_size, hidden_size, n_layers, dropout=(0 if n_layers == 1 else dropout))
         self.concat = nn.Linear(hidden_size * 2, hidden_size)
+        # self.out = nn.Linear(hidden_size - 128, output_size)
         self.out = nn.Linear(hidden_size, output_size)
 
         self.attn = Attn(attn_model, hidden_size)
 
-    def forward(self, input_step, last_hidden, encoder_outputs):
+    def forward(self, input_step, last_hidden, encoder_outputs, in_graph):
         # Note: we run this one step (word) at a time
         # Get embedding of current input word
         embedded = self.embedding(input_step)
         embedded = self.embedding_dropout(embedded)
+        in_graph = torch.unsqueeze(in_graph, 0)
+        in_graph = in_graph.repeat(input_step.size(0), 1, 1)
+        in_graph = in_graph.to(device)
+        # print(embedded.size())
+        # print(in_graph.size())
+        emb = torch.cat((embedded, in_graph), 2)
+        # print(emb.size())
+        emb = emb.to(device)
+        # raise KeyError
+
         # Forward through unidirectional GRU
-        rnn_output, hidden = self.gru(embedded, last_hidden)
+        rnn_output, hidden = self.gru(emb, last_hidden)
+        # rnn_output, hidden = self.gru(embedded, last_hidden)
         # Calculate attention weights from the current GRU output
         attn_weights = self.attn(rnn_output, encoder_outputs)
         # Multiply attention weights to encoder outputs to get new "weighted sum" context vector
         context = attn_weights.bmm(encoder_outputs.transpose(0, 1))
         # Concatenate weighted context vector and GRU output using Luong eq. 5
         rnn_output = rnn_output.squeeze(0)
+        # print(rnn_output.size())
+        # print(context.size())
         context = context.squeeze(1)
         concat_input = torch.cat((rnn_output, context), 1)
         concat_output = torch.tanh(self.concat(concat_input))
+        # print(concat_output.size())
         # Predict next word using Luong eq. 6
+        # output = self.out(concat_output[:, :300])
         output = self.out(concat_output)
+        # print(output.size())
+        # raise KeyError
         output = F.softmax(output, dim=1)
         # Return output and final hidden state
         return output, hidden
@@ -158,7 +176,7 @@ class GreedySearchDecoder(nn.Module):
         # Iteratively decode one word token at a time
         for _ in range(max_length):
             # Forward pass through decoder
-            decoder_output, decoder_hidden = self.decoder(decoder_input, decoder_hidden, encoder_outputs)
+            decoder_output, decoder_hidden = self.decoder(decoder_input, decoder_hidden, encoder_outputs, in_graph)
             # Obtain most likely word token and its softmax score
             decoder_scores, decoder_input = torch.max(decoder_output, dim=1)
             # Record token and score
@@ -200,7 +218,7 @@ class Seq2Seq(nn.Module):
         if use_teacher_forcing:
             for t in range(max_target_len):
                 decoder_output, decoder_hidden = self.decoder(
-                    decoder_input, decoder_hidden, encoder_outputs
+                    decoder_input, decoder_hidden, encoder_outputs, in_graph
                 )
                 # Teacher forcing: next input is current target
                 decoder_input = target_variable[t].view(1, -1)
@@ -212,7 +230,7 @@ class Seq2Seq(nn.Module):
         else:
             for t in range(max_target_len):
                 decoder_output, decoder_hidden = self.decoder(
-                    decoder_input, decoder_hidden, encoder_outputs
+                    decoder_input, decoder_hidden, encoder_outputs, in_graph
                 )
                 # No teacher forcing: next input is decoder's own current output
                 _, topi = decoder_output.topk(1)

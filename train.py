@@ -27,7 +27,6 @@ from utils.util import *
 from model import *
 from eval import *
 from torchtext.vocab import GloVe, Vectors
-from torchtext import data, datasets, vocab
 
 optparser = optparse.OptionParser()
 optparser.add_option(
@@ -287,7 +286,7 @@ if loadFilename:
     embedding.load_state_dict(embedding_sd)
 # Initialize encoder & decoder models
 encoder = EncoderRNN(hidden_size + 128, embedding, encoder_n_layers, dropout)
-decoder = LuongAttnDecoderRNN(attn_model, embedding, hidden_size, voc.num_words, decoder_n_layers, dropout)
+decoder = LuongAttnDecoderRNN(attn_model, embedding, hidden_size + 128, voc.num_words, decoder_n_layers, dropout)
 if loadFilename:
     encoder.load_state_dict(encoder_sd)
     decoder.load_state_dict(decoder_sd)
