@@ -114,7 +114,7 @@ ptyprocess==0.6.0
 pyasn1==0.4.4
 pyasn1-modules==0.2.2
 pycparser==2.18
-Pygments==2.3.1
+Pygments==2.7.4
 PyHamcrest==1.9.0
 pyltp==0.2.1
 pymongo==3.7.1
